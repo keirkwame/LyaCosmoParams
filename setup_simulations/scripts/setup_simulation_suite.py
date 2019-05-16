@@ -24,8 +24,10 @@ parser.add_argument('--add_running', action='store_true', help='Add parameter de
 parser.add_argument('--add_mu_H', action='store_true', help='Add parameter to boost heating in Hydrogen',required=False)
 parser.add_argument('--nsamples', type=int, default=10, help='Number of samples in Latin hypercube')
 parser.add_argument('--ngrid', type=int, default=64, help='Number of particles per side in simulation')
-parser.add_argument('--box_Mpc', type=float, default=50.0, help='Simulation box size (in Mpc)')
+parser.add_argument('--box_Mpc', type=float, default=50.0, help='Simulation box size (in Mpc; no h normalisation)')
 parser.add_argument('--zs', type=str, help='Comma-separated list of redshifts (including last snapshot)')
+parser.add_argument('--z_star', type=float, default=3.0, help='Pivot redshift')
+parser.add_argument('--kp_Mpc', type=float, default=0.7, help='Pivot wavenumber (in Mpc; no h normalisation)')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to setup Latin hypercube')
 parser.add_argument('--verbose', action='store_true', help='Print runtime information',required=False)
 args = parser.parse_args()
@@ -50,7 +52,7 @@ else:
 # setup parameter space
 param_space=sim_params_space.SimulationParameterSpace(filename=args.config,
                     add_slope=args.add_slope,add_running=args.add_running,
-                    add_mu_H=args.add_mu_H)
+                    add_mu_H=args.add_mu_H, z_star=args.z_star, kp_Mpc=args.kp_Mpc)
 params=param_space.params
 
 # get pivot point
@@ -91,7 +93,7 @@ if verbose:
     camb_cosmo.print_info(cosmo_fid)
 
 # setup fiducial linear power model
-linP_model_fid=fit_linP.LinearPowerModel(cosmo_fid,z_star=z_star,
+linP_model_fid=fit_linP.LinearPowerModel(cosmo=cosmo_fid,z_star=z_star,
             k_units='Mpc',kp=kp_Mpc)
 if verbose:
     print('fiducial linear power parameters',linP_model_fid.get_params())
@@ -123,28 +125,19 @@ for sample in range(nsamples):
     else:
         mu_H=1.0
 
-    sim_dir=basedir+'/sim_pair_'+str(sample)+'/'
+    sim_dir=basedir+'/sim_'+str(sample)+'/'
     os.mkdir(sim_dir)
-    # make a different folder for each simulation in the pair
-    plus_dir=sim_dir+'/sim_plus/'
-    os.mkdir(plus_dir)
-    minus_dir=sim_dir+'/sim_minus/'
-    os.mkdir(minus_dir)
 
     # write GenIC and MP-Gadget parameters, for both simulations in pair
     if verbose:
         print('write config files for GenIC and Gadget')
-    write_config.write_genic_file(plus_dir,cosmo_sim,
+    write_config.write_genic_file(sim_dir,cosmo_sim,
             Ngrid=args.ngrid,box_Mpc=args.box_Mpc,paired=False)
-    zs=write_config.write_gadget_file(plus_dir,cosmo_sim,mu_H=mu_H,mu_He=mu_He,
-            Ngrid=args.ngrid,zs=zs)
-    write_config.write_genic_file(minus_dir,cosmo_sim,
-            Ngrid=args.ngrid,box_Mpc=args.box_Mpc,paired=True)
-    _=write_config.write_gadget_file(minus_dir,cosmo_sim,mu_H=mu_H,mu_He=mu_He,
+    zs=write_config.write_gadget_file(sim_dir,cosmo_sim,mu_H=mu_H,mu_He=mu_He,
             Ngrid=args.ngrid,zs=zs)
 
     # construct linear power model and store in JSON format
-    linP_model_sim=fit_linP.LinearPowerModel(cosmo_sim,z_star=z_star,
+    linP_model_sim=fit_linP.LinearPowerModel(cosmo=cosmo_sim,z_star=z_star,
             k_units='Mpc',kp=kp_Mpc)
 
     if verbose:
