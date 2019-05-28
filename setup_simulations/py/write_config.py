@@ -5,7 +5,7 @@ import os
 import json
 
 
-def write_genic_file(simdir,cosmo,Ngrid=256,box_Mpc=90,z_ini=99,
+def write_genic_file(simdir,cosmo, alpha=0., beta=1., gamma=0., Ngrid=256,box_Mpc=90,z_ini=99,
         seed=123,paired=False):
     """Write a GenIC file for a given cosmology"""
 
@@ -62,6 +62,11 @@ def write_genic_file(simdir,cosmo,Ngrid=256,box_Mpc=90,z_ini=99,
     genic_file.write("PrimordialIndex = %f \n" % cosmo.InitPower.ns)
     genic_file.write("PrimordialAmp = %.6e \n" % cosmo.InitPower.As)
     genic_file.write("PrimordialRunning = %.6e \n" % cosmo.InitPower.nrun)
+
+    #nCDM parameters
+    genic_file.write("Alpha = %f \n" % alpha)
+    genic_file.write("Beta = %f \n" % beta)
+    genic_file.write("Gamma = %f \n" % gamma)
 
     # not quite sure if needed...
     genic_file.write("UnitLength_in_cm = 3.085678e21 \n")

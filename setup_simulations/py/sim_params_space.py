@@ -49,6 +49,9 @@ class SimulationParameterSpace(object):
                 'z_star':z_star, 'latex':r'$\Omega_\star$'}
         params['Delta2_star']={'ip':len(params), 'min_val':0.35, 'max_val':0.55,
                 'z_star':z_star, 'kp_Mpc':kp_Mpc, 'latex':r'$\Delta^2_\star$'}
+        params['Alpha'] = {'ip': len(params), 'min_val': 0., 'max_val': 0.1, 'latex': r'$\alpha$'}
+        params['Beta'] = {'ip': len(params), 'min_val': 0., 'max_val': 10., 'latex': r'$\beta$'}
+        params['Gamma'] = {'ip': len(params), 'min_val': -10., 'max_val': 0., 'latex': r'$\gamma$'}
         if add_slope:
             params['n_star']={'ip':len(params), 'min_val':-2.53,
                     'max_val':-2.43, 'z_star':z_star, 'kp_Mpc':kp_Mpc,

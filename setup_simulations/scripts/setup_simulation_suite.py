@@ -113,6 +113,25 @@ for sample in range(nsamples):
     cosmo_sim=sim_params_cosmo.cosmo_from_sim_params(params,sim_params,
             linP_model_fid,verbose=verbose)
 
+    #nCDM parameters
+    if 'Alpha' in params:
+        ip_alpha = params['Alpha']['ip']
+        alpha = sim_params[ip_alpha]
+    else:
+        alpha = 0.
+
+    if 'Beta' in params:
+        ip_beta = params['Beta']['ip']
+        beta = sim_params[ip_beta]
+    else:
+        beta = 1.
+
+    if 'Gamma' in params:
+        ip_gamma = params['Gamma']['ip']
+        gamma= sim_params[ip_gamma]
+    else:
+        gamma = 0.
+
     # figure out heating amplitude for Helium and Hydrogen
     if 'mu_He' in params:
         ip_He=params['mu_He']['ip']
@@ -131,7 +150,7 @@ for sample in range(nsamples):
     # write GenIC and MP-Gadget parameters, for both simulations in pair
     if verbose:
         print('write config files for GenIC and Gadget')
-    write_config.write_genic_file(sim_dir,cosmo_sim,
+    write_config.write_genic_file(sim_dir,cosmo_sim, alpha=alpha, beta=beta, gamma=gamma,
             Ngrid=args.ngrid,box_Mpc=args.box_Mpc,paired=False)
     zs=write_config.write_gadget_file(sim_dir,cosmo_sim,mu_H=mu_H,mu_He=mu_He,
             Ngrid=args.ngrid,zs=zs)

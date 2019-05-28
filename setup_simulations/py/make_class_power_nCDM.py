@@ -48,7 +48,10 @@ MNut = float(min=0, default=0)
 MWDM_Therm = float(min=0, default=0)
 PrimordialIndex = float(default=0.971)
 PrimordialAmp = float(default=2.215e-9)
-CMBTemperature = float(default=2.7255)""".split('\n')
+CMBTemperature = float(default=2.7255)
+Alpha = float(default=0.0)
+Beta = float(default=1.0)
+Gamma = float(default=0.0)""".split('\n')
 
 def _check_genic_config(config):
     """Check that the MP-GenIC config file is sensible for running CLASS on."""
@@ -155,6 +158,11 @@ def make_class_power(paramfile, external_pk = None, extraz=None, verbose=False):
     powerparams = {'output': 'dTk vTk mPk', 'P_k_max_h/Mpc' : maxk, "z_max_pk" : maxz,'z_pk': outputs, 'extra metric transfer functions': 'y'}
     pre_params.update(powerparams)
 
+    #nCDM parameters
+    alpha = config['Alpha']
+    beta = config['Beta']
+    gamma = config['Gamma']
+
     if verbose:
         verb_params = {'input_verbose': 1, 'background_verbose': 1, 'thermodynamics_verbose': 1, 'perturbations_verbose': 1, 'transfer_verbose': 1, 'primordial_verbose': 1, 'spectra_verbose': 1, 'nonlinear_verbose': 1, 'lensing_verbose': 1, 'output_verbose': 1}
         pre_params.update(verb_params)
@@ -188,7 +196,7 @@ def make_class_power(paramfile, external_pk = None, extraz=None, verbose=False):
     #fp-roundoff
     trans['k'][-1] *= 0.9999
     #Get and save the matter power spectrum
-    pk_lin = powspec.get_pklin(k=trans['k'], z=redshift)
+    pk_lin = get_linear_matter_power_spectrum(trans['k'], redshift, powspec, alpha=alpha, beta=beta, gamma=gamma)
     pkfile = os.path.join(sdir, config['FileWithInputSpectrum'])
     if os.path.exists(pkfile):
         raise IOError("Refusing to write to existing file: ",pkfile)
@@ -202,11 +210,20 @@ def make_class_power(paramfile, external_pk = None, extraz=None, verbose=False):
             save_transfer(trans, tfile)
             trans['k'][-1] *= 0.9999
             #Get and save the matter power spectrum
-            pk_lin = powspec.get_pklin(k=trans['k'], z=red)
+            pk_lin = get_linear_matter_power_spectrum(trans['k'], red, powspec, alpha=alpha, beta=beta, gamma=gamma)
             pkfile = os.path.join(sdir, config['FileWithInputSpectrum']+"-"+str(red))
             if os.path.exists(pkfile):
                 raise IOError("Refusing to write to existing file: ",pkfile)
             np.savetxt(pkfile, np.vstack([trans['k'], pk_lin]).T)
+
+def transfer_function_nCDM(k, alpha=0., beta=1., gamma=0.):
+    """Square root of ratio of linear power spectrum in presence of nCDM with respect to that in presence of CDM."""
+    return (1. + ((alpha * k) ** beta)) ** gamma
+
+def get_linear_matter_power_spectrum(k, z, power_spectrum_instance, alpha=0., beta=1., gamma=0.):
+    """Get linear matter power spectrum for given k (h/Mpc) and z."""
+    nCDM_correction = transfer_function_nCDM(k, alpha=alpha, beta=beta, gamma=gamma) ** 2
+    return power_spectrum_instance.get_pklin(k=k, z=z) * nCDM_correction
 
 def save_transfer(transfer, transferfile):
     """Save a transfer function. Note we save the CLASS FORMATTED transfer functions.
