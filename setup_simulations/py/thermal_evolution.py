@@ -33,7 +33,7 @@ class ThermalEvolution():
             #print(self.thermal_parameters[-1].shape)
         assert len(self.thermal_parameters) == self.n_simulations
 
-    def train_interpolator(self, pivot_redshift):
+    def train_interpolator(self, pivot_redshift, use_parameter=[True, True, True]):
         """Train the interpolator"""
         training_input_parameters = self.input_parameters[:, 1:]
 
@@ -49,16 +49,36 @@ class ThermalEvolution():
         training_input_parameters = training_input_parameters[training_data_mask]
         assert training_input_parameters.shape[0] == training_thermal_parameters.shape[0]
 
-        self._predict_A = spi.Rbf(training_thermal_parameters[:, 0], training_thermal_parameters[:, 1], training_thermal_parameters[:, 2], training_input_parameters[:, 0])
-        self._predict_B = spi.Rbf(training_thermal_parameters[:, 0], training_thermal_parameters[:, 1],
-                                 training_thermal_parameters[:, 2], training_input_parameters[:, 1])
+        #training_thermal_parameters[:, 1] *= 1.e+4
+        #training_thermal_parameters[:, 2] *= 1.e+2
+        training_thermal_parameters = training_thermal_parameters[:, use_parameter]
+        self.training_thermal_parameters_pivot_redshift = training_thermal_parameters
+        self._minimum_training_thermal_parameters = np.min(training_thermal_parameters, axis=0)
+        training_thermal_parameters_zeroed = training_thermal_parameters - self._minimum_training_thermal_parameters[np.newaxis, :]
+        self._maximum_training_thermal_parameters_zeroed = np.max(training_thermal_parameters_zeroed, axis=0)
+        training_thermal_parameters = training_thermal_parameters_zeroed / self._maximum_training_thermal_parameters_zeroed[np.newaxis, :]
+        assert np.min(training_thermal_parameters) == 0.
+        assert np.max(training_thermal_parameters) == 1.
+        training_thermal_parameters_list = np.split(training_thermal_parameters, training_thermal_parameters.shape[1], axis=1)
 
-    def predict_A(self, T0, gamma, filtering_length):
+        self._predict_A = spi.Rbf(*training_thermal_parameters_list, training_input_parameters[:, 0])
+        self._predict_B = spi.Rbf(*training_thermal_parameters_list, training_input_parameters[:, 1])
+
+    def map_thermal_parameters_list_to_unit_hypercube(self, thermal_parameters_list):
+        """Map thermal parameters to unit hypercube (limits determined by space spanned by training data)"""
+        for i in range(len(thermal_parameters_list)):
+            thermal_parameters_list[i] = thermal_parameters_list[i] - self._minimum_training_thermal_parameters[i]
+            thermal_parameters_list[i] = thermal_parameters_list[i] / self._maximum_training_thermal_parameters_zeroed[i]
+        return thermal_parameters_list
+
+    def predict_A(self, thermal_parameters_list):
         """Predict the value of A (multiplicative correction to photoheating rates) required to give the given thermal
         parameters (T0 in K, gamma and filtering_length in ckpc) at the chosen pivot redshift"""
-        return self._predict_A(T0.to(u.K), gamma, filtering_length.to(u.kpc))
+        A = self._predict_A(*self.map_thermal_parameters_list_to_unit_hypercube(thermal_parameters_list))
+        return A
 
-    def predict_B(self, T0, gamma, filtering_length):
+    def predict_B(self, thermal_parameters_list):
         """Predict the value of B (exponent of density-dependent correction to photoheating rates) required to give the
         given thermal parameters (T0 in K, gamma and filtering_length in ckpc) at the chosen pivot redshift"""
-        return self._predict_B(T0.to(u.K), gamma, filtering_length.to(u.kpc))
+        B = self._predict_B(*self.map_thermal_parameters_list_to_unit_hypercube(thermal_parameters_list))
+        return B
