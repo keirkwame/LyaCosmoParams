@@ -111,7 +111,8 @@ class MPGadgetThermalEvolution(ThermalEvolution):
 
     def _load_legend(self, data):
         """Load data legend"""
-        self.input_parameters = np.unique(data[:, :3], axis=1)
+        _, unique_indices = np.unique(data[:, :3], axis=0, return_index=True)
+        self.input_parameters = data[np.sort(unique_indices), :3]
         self.n_simulations = self.input_parameters.shape[0]
         self.input_parameters = np.concatenate((np.atleast_2d(np.arange(self.n_simulations)).T, self.input_parameters), axis=1)
 
